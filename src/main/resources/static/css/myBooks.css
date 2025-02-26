@@ -1,0 +1,13 @@
+*{
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+}
+
+.contm{
+box-shadow: 0 25px 50px rgba(0,0,0,0);
+}
+
+.contm .table{
+box-shadow: 0 25px 50px rgba(0,0,0,0);
+}
