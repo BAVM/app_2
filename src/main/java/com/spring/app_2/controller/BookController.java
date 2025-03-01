@@ -64,7 +64,7 @@ public class BookController {
     public String editBook(@PathVariable("id") int id,Model model) {
         Book b=service.getBookById(id);
         model.addAttribute("book",b);
-        return "bookEdit";
+        return "/bookEdit";
     }
     @RequestMapping("/deleteBook/{id}")
     public String deleteBook(@PathVariable("id")int id) {
