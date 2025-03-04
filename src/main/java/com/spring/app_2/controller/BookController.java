@@ -5,73 +5,166 @@ import com.spring.app_2.entity.Book;
 import com.spring.app_2.service.BookService;
 import com.spring.app_2.service.MyBookListService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.ModelAndView;
+
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
-@Controller
+
+//@Controller
+@RestController
+@RequestMapping("/api/books")
 public class BookController {
 
+    // DESHABILITAR PARA FLUX
+
+    /*@Autowired
+    private BookService service;
+
+    @Autowired
+    private MyBookListService myBookService;
+
+
+    @GetMapping
+    public ResponseEntity<List<Book>> getAllBooks() {
+        List<Book> books = service.getAllBook();
+        return ResponseEntity.ok(books);
+    }
+
+    @PostMapping
+    public ResponseEntity<Book> addBook(@RequestBody Book book) {
+        service.save(book);
+        return ResponseEntity.ok(book);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Book> getBookById(@PathVariable int id) {
+        Optional<Book> book = Optional.ofNullable(service.getBookById(id));
+        return book.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Book> updateBook(@PathVariable int id, @RequestBody Book updatedBook) {
+        Book book = service.getBookById(id);
+        if (book != null) {
+            book.setName(updatedBook.getName());
+            book.setAuthor(updatedBook.getAuthor());
+            book.setCountry(updatedBook.getCountry());
+            service.save(book);
+            return ResponseEntity.ok(book);
+        }
+        return ResponseEntity.notFound().build();
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteBook(@PathVariable int id) {
+        Book book = service.getBookById(id);
+        if (book == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        service.deleteById(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/mylist/{id}")
+    public ResponseEntity<MyBookList> addToMyList(@PathVariable int id) {
+        Book book = service.getBookById(id);
+        if (book != null) {
+            MyBookList myBook = new MyBookList(book.getId(), book.getName(), book.getAuthor(), book.getCountry());
+            myBookService.saveMyBooks(myBook);
+            return ResponseEntity.ok(myBook);
+        }
+        return ResponseEntity.notFound().build();
+    }
+
+    @PatchMapping("/{id}")
+    public ResponseEntity<Book> updatePartialBook(@PathVariable int id, @RequestBody Map<String, Object> updates) {
+        Book book = service.getBookById(id);
+        if (book == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        updates.forEach((key, value) -> {
+            switch (key) {
+                case "name":
+                    book.setName((String) value);
+                    break;
+                case "author":
+                    book.setAuthor((String) value);
+                    break;
+                case "country":
+                    book.setCountry((String) value);
+                    break;
+            }
+        });
+
+        service.save(book);
+        return ResponseEntity.ok(book);
+    }*/
+
+
+
+    // FLUX
     @Autowired
     private BookService service;
 
     @Autowired
     private MyBookListService myBookService;
 
-    @GetMapping("/")
-    public String home() {
-        return "home";
+    @GetMapping
+    public Flux<Book> getAllBooks() {
+        return Flux.fromIterable(service.getAllBook());
     }
 
-    @GetMapping("/book_register")
-    public String bookRegister() {
-        return "bookRegister";
+    @PostMapping
+    public Mono<ResponseEntity<Book>> addBook(@RequestBody Book book) {
+        service.save(book);
+        return Mono.just(ResponseEntity.ok(book));
     }
 
-    @GetMapping("/available_books")
-    public ModelAndView getAllBook() {
-        List<Book> list=service.getAllBook();
-//		ModelAndView m=new ModelAndView();
-//		m.setViewName("bookList");
-//		m.addObject("book",list);
-        return new ModelAndView("bookList","book",list);
+    @GetMapping("/{id}")
+    public Mono<ResponseEntity<Book>> getBookById(@PathVariable int id) {
+        return Mono.fromCallable(() -> service.getBookById(id)) // Llamada segura a Optional<Book>
+                .flatMap(optionalBook -> optionalBook
+                        .map(book -> Mono.just(ResponseEntity.ok(book))) // Si el libro existe
+                        .orElseGet(() -> Mono.just(ResponseEntity.notFound().build()))); // Si el libro no existe
     }
 
-    @PostMapping("/save")
-    public String addBook(@ModelAttribute Book b) {
-        service.save(b);
-        return "redirect:/available_books";
-    }
-    @GetMapping("/my_books")
-    public String getMyBooks(Model model)
-    {
-        List<MyBookList>list=myBookService.getAllMyBooks();
-        model.addAttribute("book",list);
-        return "myBooks";
-    }
-    @RequestMapping("/mylist/{id}")
-    public String getMyList(@PathVariable("id") int id) {
-        Book b=service.getBookById(id);
-        MyBookList mb=new MyBookList(b.getId(),b.getName(),b.getAuthor(),b.getCountry());
-        myBookService.saveMyBooks(mb);
-        return "redirect:/my_books";
+    @PutMapping("/{id}")
+    public Mono<ResponseEntity<Book>> updateBook(@PathVariable int id, @RequestBody Book updatedBook) {
+        return Mono.justOrEmpty(service.getBookById(id))
+                .flatMap(book -> {
+                    book.setName(updatedBook.getName());
+                    book.setAuthor(updatedBook.getAuthor());
+                    book.setCountry(updatedBook.getCountry());
+                    service.save(book);
+                    return Mono.just(ResponseEntity.ok(book));
+                })
+                .defaultIfEmpty(ResponseEntity.notFound().build());
     }
 
-    @RequestMapping("/editBook/{id}")
-    public String editBook(@PathVariable("id") int id,Model model) {
-        Book b=service.getBookById(id);
-        model.addAttribute("book",b);
-        return "/bookEdit";
-    }
-    @RequestMapping("/deleteBook/{id}")
-    public String deleteBook(@PathVariable("id")int id) {
-        service.deleteById(id);
-        return "redirect:/available_books";
+    @DeleteMapping("/{id}")
+    public Mono<ResponseEntity<Void>> deleteBook(@PathVariable int id) {
+        return Mono.fromRunnable(() -> service.deleteById(id))
+                .then(Mono.just(ResponseEntity.noContent().build()));
     }
 
+    @PostMapping("/mylist/{id}")
+    public Mono<ResponseEntity<MyBookList>> addToMyList(@PathVariable int id) {
+        return Mono.justOrEmpty(service.getBookById(id))
+                .flatMap(book -> {
+                    MyBookList myBook = new MyBookList(book.getId(), book.getName(), book.getAuthor(), book.getCountry());
+                    myBookService.saveMyBooks(myBook);
+                    return Mono.just(ResponseEntity.ok(myBook));
+                })
+                .defaultIfEmpty(ResponseEntity.notFound().build());
+    }
 
 
 }

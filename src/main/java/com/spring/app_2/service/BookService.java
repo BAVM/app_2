@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 
 @Service
@@ -22,11 +23,24 @@ public class BookService {
         return bRepo.findAll();
     }
 
-    public Book getBookById(int id) {
+    //habilitar para flux
+
+    public Optional<Book> getBookById(int id) {
+        return bRepo.findById(id);
+    }
+
+    public void deleteById(int id) {
+        bRepo.deleteById(id);
+    }
+
+
+    /// Pruebas postman y test //Deshabilitar para FLUX
+
+    /*public Book getBookById(int id) {
         return bRepo.findById(id).get();
     }
     public void deleteById(int id) {
         bRepo.deleteById(id);
-    }
+    }*/
 
 }
